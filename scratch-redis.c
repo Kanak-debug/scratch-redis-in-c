@@ -238,15 +238,25 @@ void parse_and_print_resp(int sock) {
 }
 
 void usage(void) {
-    printf("Usage: redis-client [options] [cmd [arg [arg ...]]]\n"
-           "A simple Redis client.\n\n"
-           "Options:\n"
-           "  -h <hostname>      Server hostname (default: 127.0.0.1)\n"
-           "  -p <port>          Server port (default: 6379)\n"
-           "  -a <password>      Password for authentication\n\n"
-           "If command arguments are provided, execute the command and exit.\n"
-           "Otherwise, enter interactive mode where you can type commands.\n"
-           "In interactive mode, type 'quit' or 'exit' to stop.\n");
+    printf(
+        "scratch-redis-in-c — A minimal Redis client written in pure C\n"
+        "Author: Seyyed Ali Mohammadiyeh (Max Base)\n"
+        "Repository: https://github.com/BaseMax/scratch-redis-in-c\n\n"
+
+        "Usage:\n"
+        "  redis-client [options] [cmd [arg ...]]\n\n"
+
+        "Options:\n"
+        "  -h <hostname>      Server hostname (default: 127.0.0.1)\n"
+        "  -p <port>          Server port (default: 6379)\n"
+        "  -a <password>      Password for authentication\n\n"
+
+        "Description:\n"
+        "  If command arguments are provided, the client executes the Redis command\n"
+        "  once and exits.\n"
+        "  If no command is given, the client enters interactive mode.\n"
+        "  In interactive mode, type 'quit' or 'exit' to disconnect.\n"
+    );
     exit(1);
 }
 
