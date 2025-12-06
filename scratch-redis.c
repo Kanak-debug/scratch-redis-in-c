@@ -6,9 +6,20 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <errno.h>
+#include <getopt.h>
+#include <strings.h>
 
 #define BUFFER_SIZE 4096
 #define MAX_ARGS 64
+
+int connect_to_redis(const char* host, int port);
+int authenticate_redis(int sock, const char* auth);
+int parse_command(char* input, char** args, int max_args);
+size_t serialize_command(char** args, int argc, char* buffer, size_t buf_size);
+ssize_t read_bytes(int sock, char* buf, size_t len);
+char* read_line(int sock);
+void parse_and_print_resp(int sock);
+void usage(void);
 
 int connect_to_redis(const char* host, int port) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -34,6 +45,46 @@ int connect_to_redis(const char* host, int port) {
     }
 
     return sock;
+}
+
+int authenticate_redis(int sock, const char* auth) {
+    if (!auth) return 0;
+
+    char* args[2] = {"AUTH", (char*)auth};
+    char buffer[BUFFER_SIZE];
+    size_t len = serialize_command(args, 2, buffer, sizeof(buffer));
+    if (len == 0 || len >= sizeof(buffer)) {
+        fprintf(stderr, "Auth command too long\n");
+        return -1;
+    }
+
+    if (send(sock, buffer, len, 0) < 0) {
+        perror("send auth");
+        return -1;
+    }
+
+    char type;
+    if (recv(sock, &type, 1, 0) <= 0) {
+        perror("recv auth");
+        return -1;
+    }
+
+    if (type == '+') {
+        char* line = read_line(sock);
+        if (line && strcasecmp(line, "ok") == 0) {
+            return 0;
+        } else {
+            fprintf(stderr, "Auth failed: %s\n", line ? line : "unknown");
+            return -1;
+        }
+    } else if (type == '-') {
+        char* line = read_line(sock);
+        fprintf(stderr, "Auth error: %s\n", line ? line : "");
+        return -1;
+    } else {
+        fprintf(stderr, "Unexpected response type for AUTH: %c\n", type);
+        return -1;
+    }
 }
 
 int parse_command(char* input, char** args, int max_args) {
@@ -63,13 +114,18 @@ int parse_command(char* input, char** args, int max_args) {
 size_t serialize_command(char** args, int argc, char* buffer, size_t buf_size) {
     size_t len = 0;
     len += snprintf(buffer + len, buf_size - len, "*%d\r\n", argc);
+    if (len >= buf_size) return 0;
+
     for (int i = 0; i < argc; i++) {
         size_t arg_len = strlen(args[i]);
         len += snprintf(buffer + len, buf_size - len, "$%zu\r\n", arg_len);
+        if (len >= buf_size) return 0;
+        if (arg_len > buf_size - len) return 0;
         memcpy(buffer + len, args[i], arg_len);
         len += arg_len;
         memcpy(buffer + len, "\r\n", 2);
         len += 2;
+        if (len >= buf_size) return 0;
     }
     return len;
 }
@@ -92,8 +148,9 @@ char* read_line(int sock) {
     size_t pos = 0;
     while (pos < BUFFER_SIZE - 1) {
         char c;
-        if (recv(sock, &c, 1, 0) <= 0) {
-            perror("recv");
+        ssize_t r = recv(sock, &c, 1, 0);
+        if (r <= 0) {
+            if (r < 0) perror("recv");
             return NULL;
         }
         buf[pos++] = c;
@@ -108,8 +165,9 @@ char* read_line(int sock) {
 
 void parse_and_print_resp(int sock) {
     char type;
-    if (recv(sock, &type, 1, 0) <= 0) {
-        perror("recv");
+    ssize_t r = recv(sock, &type, 1, 0);
+    if (r <= 0) {
+        if (r < 0) perror("recv");
         return;
     }
 
@@ -137,6 +195,10 @@ void parse_and_print_resp(int sock) {
                 printf("(nil)\n");
                 return;
             }
+            if (len < 0 || len > 1024 * 1024) {
+                fprintf(stderr, "Invalid bulk length\n");
+                return;
+            }
             char* data = malloc(len + 2);
             if (!data) {
                 fprintf(stderr, "Malloc failed\n");
@@ -159,8 +221,12 @@ void parse_and_print_resp(int sock) {
                 printf("(nil)\n");
                 return;
             }
-            for (int i = 0; i < count; i++) {
-                printf("%d) ", i + 1);
+            if (count < 0 || count > 10000) {
+                fprintf(stderr, "Invalid array count\n");
+                return;
+            }
+            for (long i = 0; i < count; i++) {
+                printf("%ld) ", i + 1);
                 parse_and_print_resp(sock);
             }
             break;
@@ -171,53 +237,119 @@ void parse_and_print_resp(int sock) {
     }
 }
 
-int main() {
-    int sock = connect_to_redis("127.0.0.1", 6379);
+void usage(void) {
+    printf("Usage: redis-client [options] [cmd [arg [arg ...]]]\n"
+           "A simple Redis client.\n\n"
+           "Options:\n"
+           "  -h <hostname>      Server hostname (default: 127.0.0.1)\n"
+           "  -p <port>          Server port (default: 6379)\n"
+           "  -a <password>      Password for authentication\n\n"
+           "If command arguments are provided, execute the command and exit.\n"
+           "Otherwise, enter interactive mode where you can type commands.\n"
+           "In interactive mode, type 'quit' or 'exit' to stop.\n");
+    exit(1);
+}
+
+int main(int argc, char** argv) {
+    char* host = "127.0.0.1";
+    int port = 6379;
+    char* auth = NULL;
+
+    int opt;
+    while ((opt = getopt(argc, argv, "h:p:a:")) != -1) {
+        switch (opt) {
+            case 'h':
+                host = optarg;
+                break;
+            case 'p':
+                port = atoi(optarg);
+                if (port <= 0) {
+                    fprintf(stderr, "Invalid port\n");
+                    usage();
+                }
+                break;
+            case 'a':
+                auth = optarg;
+                break;
+            default:
+                usage();
+        }
+    }
+
+    int sock = connect_to_redis(host, port);
     if (sock < 0) {
-        fprintf(stderr, "Failed to connect to Redis\n");
+        fprintf(stderr, "Failed to connect to Redis at %s:%d\n", host, port);
         return 1;
     }
 
-    printf("Connected to Redis. Enter commands (type 'quit' or 'exit' to stop).\n");
+    if (authenticate_redis(sock, auth) < 0) {
+        close(sock);
+        return 1;
+    }
 
-    char input[BUFFER_SIZE];
-    char* args[MAX_ARGS];
     char buffer[BUFFER_SIZE];
 
-    while (1) {
-        printf("redis> ");
-        fflush(stdout);
+    if (optind < argc) {
+        int cmd_argc = argc - optind;
+        char** cmd_args = argv + optind;
 
-        if (fgets(input, sizeof(input), stdin) == NULL) {
-            break;
-        }
-
-        input[strcspn(input, "\n")] = '\0';
-
-        if (strlen(input) == 0) continue;
-
-        if (strcasecmp(input, "quit") == 0 || strcasecmp(input, "exit") == 0) {
-            break;
-        }
-
-        int argc = parse_command(input, args, MAX_ARGS);
-        if (argc == 0) continue;
-
-        size_t len = serialize_command(args, argc, buffer, sizeof(buffer));
+        size_t len = serialize_command(cmd_args, cmd_argc, buffer, sizeof(buffer));
         if (len == 0 || len >= sizeof(buffer)) {
             fprintf(stderr, "Command too long\n");
-            continue;
+            close(sock);
+            return 1;
         }
 
         if (send(sock, buffer, len, 0) < 0) {
             perror("send");
-            break;
+            close(sock);
+            return 1;
         }
 
         parse_and_print_resp(sock);
-    }
+        close(sock);
+        return 0;
+    } else {
+        printf("Connected to Redis at %s:%d. Enter commands (type 'quit' or 'exit' to stop).\n", host, port);
 
-    close(sock);
-    printf("Disconnected.\n");
-    return 0;
+        char input[BUFFER_SIZE];
+        char* args[MAX_ARGS];
+
+        while (1) {
+            printf("redis> ");
+            fflush(stdout);
+
+            if (fgets(input, sizeof(input), stdin) == NULL) {
+                break;
+            }
+
+            input[strcspn(input, "\n")] = '\0';
+
+            if (strlen(input) == 0) continue;
+
+            if (strcasecmp(input, "quit") == 0 || strcasecmp(input, "exit") == 0) {
+                break;
+            }
+
+            int pargc = parse_command(input, args, MAX_ARGS);
+            if (pargc == 0) continue;
+
+            size_t len = serialize_command(args, pargc, buffer, sizeof(buffer));
+            if (len == 0 || len >= sizeof(buffer)) {
+                fprintf(stderr, "Command too long\n");
+                continue;
+            }
+
+            if (send(sock, buffer, len, 0) < 0) {
+                perror("send");
+                break;
+            }
+
+            parse_and_print_resp(sock);
+        }
+
+        close(sock);
+        printf("Disconnected.\n");
+        return 0;
+    }
 }
