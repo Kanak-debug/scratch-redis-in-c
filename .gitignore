@@ -1,4 +1,3 @@
 *.o
 *.exe
 scratch-redis
-redis

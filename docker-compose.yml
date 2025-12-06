@@ -1,0 +1,19 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: my-redis-server
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+
+  redis-client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: my-redis-client
+    depends_on:
+      - redis
+    tty: true
+    stdin_open: true
+    # Optional: if you have a password
+    # command: ./redis -h redis -p 6379 -a yourpassword
